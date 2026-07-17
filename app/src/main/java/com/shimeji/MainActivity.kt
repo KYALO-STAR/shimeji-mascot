@@ -10,8 +10,6 @@ import android.os.Bundle
 import android.provider.Settings
 import android.widget.Button
 import android.widget.Toast
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 
 class MainActivity : Activity() {
     companion object {
@@ -23,16 +21,12 @@ class MainActivity : Activity() {
 
         val btn = Button(this).apply {
             text = "Start Shimeji"
-            setOnClickListener {
-                requestAllPermissions()
-            }
+            setOnClickListener { requestAllPermissions() }
         }
         setContentView(btn)
     }
 
     private fun requestAllPermissions() {
-        val permissions = mutableListOf<String>()
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -43,22 +37,18 @@ class MainActivity : Activity() {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
             ) {
-                permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+                requestPermissions(
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    PERMISSION_REQUEST_CODE
+                )
+                return
             }
         }
 
-        if (permissions.isNotEmpty()) {
-            ActivityCompat.requestPermissions(
-                this,
-                permissions.toTypedArray(),
-                PERMISSION_REQUEST_CODE
-            )
-        } else {
-            startShimeji()
-        }
+        startShimeji()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
