@@ -20,7 +20,7 @@ jobs:
       - name: Install Android SDK
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
-          curl -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip
+          curl -sL -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip
           unzip -q cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
           mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1
@@ -28,10 +28,20 @@ jobs:
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
 
+      - name: Install Gradle 8.11.1
+        run: |
+          curl -sL -o gradle.zip https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
+          unzip -q gradle.zip
+          echo "$(pwd)/gradle-8.11.1/bin" >> $GITHUB_PATH
+
+      - name: Generate Gradle Wrapper
+        run: gradle wrapper --gradle-version 8.11.1
+
       - name: Build APK
         run: |
           export ANDROID_HOME=/usr/local/lib/android/sdk
-          gradle assembleDebug
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
