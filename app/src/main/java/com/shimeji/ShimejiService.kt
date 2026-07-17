@@ -11,9 +11,8 @@ import android.os.Build
 import android.os.IBinder
 import android.view.*
 import android.view.Gravity
-import kotlin.math.cos
+import android.util.DisplayMetrics
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 class ShimejiService : Service() {
     private lateinit var windowManager: WindowManager
@@ -94,10 +93,14 @@ class ShimejiService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        overlayView = OverlayView(this)
-        setupNotification()
-        setupOverlay()
+        try {
+            windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+            overlayView = OverlayView(this)
+            setupNotification()
+            setupOverlay()
+        } catch (e: Exception) {
+            stopSelf()
+        }
     }
 
     private fun setupNotification() {
@@ -116,6 +119,7 @@ class ShimejiService : Service() {
                 .setSmallIcon(android.R.drawable.ic_menu_myplaces)
                 .build()
         } else {
+            @Suppress("DEPRECATION")
             Notification.Builder(this)
                 .setContentTitle("Shimeji")
                 .setContentText("Your mascot is running")
@@ -126,14 +130,8 @@ class ShimejiService : Service() {
     }
 
     private fun setupOverlay() {
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                    WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION
-        } else {
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-        }
+        val flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
 
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -157,7 +155,6 @@ class ShimejiService : Service() {
 
         overlayView.layoutParams = ViewGroup.LayoutParams(SIZE, SIZE)
         windowManager.addView(overlayView, params)
-
         startPhysicsLoop()
     }
 
@@ -192,30 +189,31 @@ class ShimejiService : Service() {
     private fun startPhysicsLoop() {
         Thread {
             while (true) {
-                if (!isDragging) {
-                    velY += GRAVITY
-                    velX *= FRICTION
-                    velY *= FRICTION
-                    posX += velX
-                    posY += velY
+                try {
+                    if (!isDragging) {
+                        velY += GRAVITY
+                        velX *= FRICTION
+                        velY *= FRICTION
+                        posX += velX
+                        posY += velY
 
-                    val display = windowManager.defaultDisplay
-                    val displayMetrics = android.util.DisplayMetrics()
-                    display.getMetrics(displayMetrics)
-                    val screenW = displayMetrics.widthPixels
-                    val screenH = displayMetrics.heightPixels
+                        val metrics = DisplayMetrics()
+                        windowManager.defaultDisplay.getMetrics(metrics)
+                        val screenW = metrics.widthPixels
+                        val screenH = metrics.heightPixels
 
-                    if (posX < 0) { posX = 0f; velX = -velX * BOUNCE }
-                    if (posX > screenW - SIZE) { posX = (screenW - SIZE).toFloat(); velX = -velX * BOUNCE }
-                    if (posY < 0) { posY = 0f; velY = -velY * BOUNCE }
-                    if (posY > screenH - SIZE) { posY = (screenH - SIZE).toFloat(); velY = -velY * BOUNCE }
+                        if (posX < 0) { posX = 0f; velX = -velX * BOUNCE }
+                        if (posX > screenW - SIZE) { posX = (screenW - SIZE).toFloat(); velX = -velX * BOUNCE }
+                        if (posY < 0) { posY = 0f; velY = -velY * BOUNCE }
+                        if (posY > screenH - SIZE) { posY = (screenH - SIZE).toFloat(); velY = -velY * BOUNCE }
 
-                    updatePosition()
-                }
+                        updatePosition()
+                    }
 
-                time += 0.05f
-                frameCount++
-                overlayView.postInvalidate()
+                    time += 0.05f
+                    frameCount++
+                    overlayView.postInvalidate()
+                } catch (_: Exception) {}
                 Thread.sleep(16)
             }
         }.apply { isDaemon = true }.start()
@@ -225,7 +223,9 @@ class ShimejiService : Service() {
         params?.let { p ->
             p.x = posX.toInt()
             p.y = posY.toInt()
-            overlayView.post { windowManager.updateViewLayout(overlayView, p) }
+            try {
+                overlayView.post { windowManager.updateViewLayout(overlayView, p) }
+            } catch (_: Exception) {}
         }
     }
 
